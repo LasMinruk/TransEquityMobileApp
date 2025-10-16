@@ -1,6 +1,7 @@
-import React from 'react';
+import * as React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
+import { COLORS } from '@/constants/CollorPallet';
 
 export interface StarRatingProps {
   rating: number;
@@ -35,11 +36,11 @@ export const StarRating: React.FC<StarRatingProps> = ({
   interactive = false,
   showValue = false,
   onRatingChange,
-  color = '#f59e0b',
-  emptyColor = '#d1d5db',
+  color = COLORS.primary,
+  emptyColor = COLORS.gray,
   style,
   textStyle,
-}) => {
+}: StarRatingProps) => {
   const handleStarPress = (starRating: number) => {
     if (interactive && onRatingChange) {
       onRatingChange(starRating);

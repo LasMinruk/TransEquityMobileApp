@@ -1,5 +1,8 @@
+// contexts/AuthContext.tsx
+import SplashScreen from '@/components/ui/screen/SplashScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import * as React from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 export type User = {
   id: string;
@@ -59,8 +62,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     })();
   }, []);
 
+  // ✅ Prevent “Text must be inside <Text>” error by returning valid component
+  if (loading) {
+    return <SplashScreen onFinish={() => {}} />;
+  }
+
   const login = async (email: string, password: string) => {
-    // Hardcoded admin fallback
+    // Hardcoded admin login
     if (email === 'admin' && password === '123') {
       const adminUser: User = {
         id: 'admin',
@@ -74,6 +82,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       await setCurrentUser(adminUser);
       return true;
     }
+
     const users = await getUsers();
     const match = users.find((u) => u.email === email && u.password === password);
     if (match && match.active !== false) {
@@ -93,6 +102,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     const users = await getUsers();
     const exists = users.some((u) => u.email === data.email);
     if (exists) return false;
+
     const newUser: User = {
       id: String(Date.now()),
       name: data.name,
@@ -102,6 +112,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       active: true,
       profileImageUri: null,
     };
+
     const next = [...users, newUser];
     await setUsers(next);
     setUser(newUser);
@@ -127,5 +138,3 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
-
-

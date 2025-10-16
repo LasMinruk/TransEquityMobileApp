@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type Review = {
   id: string;
   city: string;
-  vehicleType: 'bus' | 'train' | 'tram' | 'ferry' | 'other';
+  vehicleType: 'bus' | 'train' | 'tuk tuk' | 'bicycle' | 'other';
   rating: number;
   reviewText: string;
   timestamp: number; // ms epoch
@@ -12,6 +12,7 @@ export type Review = {
 
 const REVIEWS_KEY = 'reviews';
 const USERS_KEY = 'users';
+const ONBOARDING_KEY = 'onboarding_completed';
 
 export async function getReviews(): Promise<Review[]> {
   const raw = await AsyncStorage.getItem(REVIEWS_KEY);
@@ -58,6 +59,16 @@ export async function setUsersRaw<T = any[]>(users: T) {
 export function canEditOrDelete(timestamp: number): boolean {
   const FIFTEEN_MIN_MS = 15 * 60 * 1000;
   return Date.now() - timestamp < FIFTEEN_MIN_MS;
+}
+
+// Onboarding functions
+export async function hasCompletedOnboarding(): Promise<boolean> {
+  const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
+  return completed === 'true';
+}
+
+export async function setOnboardingCompleted(): Promise<void> {
+  await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
 }
 
 

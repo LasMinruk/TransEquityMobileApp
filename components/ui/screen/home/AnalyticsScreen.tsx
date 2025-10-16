@@ -1,5 +1,5 @@
 import { StarRatingWithValue } from '@/components/StarRating';
-import { Colors } from '@/constants/theme';
+import { COLORS } from '@/constants/CollorPallet';
 import { getReviews, Review } from '@/utils/storage';
 import { getRelativeTime } from '@/utils/timeAgo';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -71,6 +71,73 @@ export default function AnalyticsScreen() {
     return { labels: labels.length ? labels : ['none'], data: data.length ? data : [0] };
   }, [filteredReviews]);
 
+  // Enhanced chart data for better insights
+  const cityPerformance = useMemo(() => {
+    const cityMap: Record<string, { sum: number; count: number }> = {};
+    for (const r of filteredReviews) {
+      if (!cityMap[r.city]) {
+        cityMap[r.city] = { sum: 0, count: 0 };
+      }
+      cityMap[r.city].sum += r.rating;
+      cityMap[r.city].count += 1;
+    }
+    
+    const sortedCities = Object.entries(cityMap)
+      .map(([city, data]) => ({
+        city,
+        avgRating: data.sum / data.count,
+        reviewCount: data.count
+      }))
+      .sort((a, b) => b.avgRating - a.avgRating)
+      .slice(0, 6); // Top 6 cities
+    
+    return {
+      labels: sortedCities.map(c => c.city),
+      data: sortedCities.map(c => c.avgRating),
+      reviewCounts: sortedCities.map(c => c.reviewCount)
+    };
+  }, [filteredReviews]);
+
+  const hourlyDistribution = useMemo(() => {
+    const hourlyMap: Record<number, number> = {};
+    for (let i = 0; i < 24; i++) {
+      hourlyMap[i] = 0;
+    }
+    
+    for (const r of filteredReviews) {
+      const hour = new Date(r.timestamp).getHours();
+      hourlyMap[hour] += 1;
+    }
+    
+    const labels = Object.keys(hourlyMap).map(h => `${h}:00`);
+    const data = Object.values(hourlyMap);
+    
+    return { labels, data };
+  }, [filteredReviews]);
+
+  const satisfactionTrend = useMemo(() => {
+    const trendMap: Record<string, { sum: number; count: number }> = {};
+    for (const r of filteredReviews) {
+      const d = new Date(r.timestamp);
+      const weekKey = `${d.getFullYear()}-W${Math.ceil(d.getDate() / 7)}`;
+      if (!trendMap[weekKey]) {
+        trendMap[weekKey] = { sum: 0, count: 0 };
+      }
+      trendMap[weekKey].sum += r.rating;
+      trendMap[weekKey].count += 1;
+    }
+    
+    const sortedWeeks = Object.entries(trendMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-8); // Last 8 weeks
+    
+    return {
+      labels: sortedWeeks.map(([week]) => week),
+      data: sortedWeeks.map(([, data]) => data.sum / data.count)
+    };
+  }, [filteredReviews]);
+
+
   const stats = useMemo(() => {
     const totalReviews = filteredReviews.length;
     const avgRating = totalReviews > 0 ? filteredReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
@@ -116,7 +183,7 @@ export default function AnalyticsScreen() {
     propsForDots: {
       r: '4',
       strokeWidth: '2',
-      stroke: Colors.light.tint,
+      stroke: COLORS.primary,
     },
     propsForBackgroundLines: {
       strokeDasharray: '',
@@ -150,7 +217,7 @@ export default function AnalyticsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.light.tint} />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Loading analytics...</Text>
         </View>
       </SafeAreaView>
@@ -179,7 +246,7 @@ export default function AnalyticsScreen() {
               onChangeText={setCitySearch}
               style={styles.searchInput}
               underlineColor="transparent"
-              selectionColor={Colors.light.tint}
+              selectionColor={COLORS.primary}
               dense
               theme={{ colors: { text: '#111827', placeholder: '#9ca3af', background: 'transparent' } }}
               placeholderTextColor="#9ca3af"
@@ -205,7 +272,7 @@ export default function AnalyticsScreen() {
             textStyle={styles.cityChipText}
             mode="outlined"
           >
-            All Cities
+            <Text>All Cities</Text>
           </Chip>
           {filteredCities.map((c) => (
             <Chip
@@ -216,7 +283,7 @@ export default function AnalyticsScreen() {
               textStyle={styles.cityChipText}
               mode="outlined"
             >
-              {c}
+              <Text>{c}</Text>
             </Chip>
           ))}
         </ScrollView>
@@ -272,9 +339,10 @@ export default function AnalyticsScreen() {
           </Card>
         </View>
 
+
         {/* Charts Section */}
         <View style={styles.chartsSection}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Performance Charts</Text>
+          <Text variant="titleMedium" style={styles.sectionTitle}>Performance Analytics</Text>
           
           {/* Average Rating Chart */}
           <Card style={styles.chartCard}>
@@ -285,12 +353,12 @@ export default function AnalyticsScreen() {
                   <Text style={styles.chartSubtitle}>Quality assessment across transit modes</Text>
                 </View>
                 <Chip compact style={styles.dataBadge} textStyle={styles.dataBadgeText} icon="database">
-                  Live Data
+                  <Text>Live Data</Text>
                 </Chip>
               </View>
               <View style={styles.chartContainer}>
                 {loading ? (
-                  <ActivityIndicator size="large" color={Colors.light.tint} style={styles.chartLoader} />
+                  <ActivityIndicator size="large" color={COLORS.primary} style={styles.chartLoader} />
                 ) : avgByVehicle.data.length > 0 ? (
                   <BarChart
                     data={{ labels: avgByVehicle.labels, datasets: [{ data: avgByVehicle.data }] }}
@@ -321,12 +389,12 @@ export default function AnalyticsScreen() {
                   <Text style={styles.chartSubtitle}>Review volume over time</Text>
                 </View>
                 <Chip compact style={styles.dataBadge} textStyle={styles.dataBadgeText} icon="trending-up">
-                  Trending
+                 <Text>Trending</Text>
                 </Chip>
               </View>
               <View style={styles.chartContainer}>
                 {loading ? (
-                  <ActivityIndicator size="large" color={Colors.light.tint} style={styles.chartLoader} />
+                  <ActivityIndicator size="large" color={COLORS.primary} style={styles.chartLoader} />
                 ) : perDay.data.length > 0 ? (
                   <LineChart
                     data={{ labels: perDay.labels, datasets: [{ data: perDay.data }] }}
@@ -358,12 +426,12 @@ export default function AnalyticsScreen() {
                     <Text style={styles.chartSubtitle}>Review distribution by transit mode</Text>
                   </View>
                   <Chip compact style={styles.dataBadge} textStyle={styles.dataBadgeText} icon="chart-pie">
-                    Distribution
+                    <Text>Distribution</Text>
                   </Chip>
                 </View>
                 <View style={styles.chartContainer}>
                   {loading ? (
-                    <ActivityIndicator size="large" color={Colors.light.tint} style={styles.chartLoader} />
+                    <ActivityIndicator size="large" color={COLORS.primary} style={styles.chartLoader} />
                   ) : (
                     <PieChart
                       data={pieData}
@@ -380,6 +448,125 @@ export default function AnalyticsScreen() {
               </Card.Content>
             </Card>
           )}
+        </View>
+
+        {/* Enhanced Analytics Charts */}
+        <View style={styles.enhancedChartsSection}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>Advanced Analytics</Text>
+          
+          {/* City Performance Chart */}
+          <Card style={styles.chartCard}>
+            <Card.Content>
+              <View style={styles.chartHeader}>
+                <View>
+                  <Text style={styles.chartTitle}>Top Performing Cities</Text>
+                  <Text style={styles.chartSubtitle}>Average ratings by city</Text>
+                </View>
+                <Chip compact style={styles.dataBadge} textStyle={styles.dataBadgeText} icon="city">
+                  {cityPerformance.labels.length} Cities
+                </Chip>
+              </View>
+              <View style={styles.chartContainer}>
+                {loading ? (
+                  <ActivityIndicator size="large" color={COLORS.primary} style={styles.chartLoader} />
+                ) : cityPerformance.data.length > 0 ? (
+                  <BarChart
+                    data={{ 
+                      labels: cityPerformance.labels, 
+                      datasets: [{ data: cityPerformance.data }] 
+                    }}
+                    width={screenWidth - 32}
+                    height={220}
+                    chartConfig={chartConfig}
+                    fromZero
+                    showValuesOnTopOfBars
+                    style={styles.chart}
+                  />
+                ) : (
+                  <View style={styles.noDataContainer}>
+                    <MaterialCommunityIcons name="chart-bar" size={48} color={COLORS.gray} />
+                    <Text style={styles.noDataText}>No city data available</Text>
+                  </View>
+                )}
+              </View>
+            </Card.Content>
+          </Card>
+
+          {/* Hourly Distribution Chart */}
+          <Card style={styles.chartCard}>
+            <Card.Content>
+              <View style={styles.chartHeader}>
+                <View>
+                  <Text style={styles.chartTitle}>Peak Review Hours</Text>
+                  <Text style={styles.chartSubtitle}>When users are most active</Text>
+                </View>
+                <Chip compact style={styles.dataBadge} textStyle={styles.dataBadgeText} icon="clock">
+                  24h Analysis
+                </Chip>
+              </View>
+              <View style={styles.chartContainer}>
+                {loading ? (
+                  <ActivityIndicator size="large" color={COLORS.primary} style={styles.chartLoader} />
+                ) : hourlyDistribution.data.length > 0 ? (
+                  <LineChart
+                    data={{ 
+                      labels: hourlyDistribution.labels.slice(0, 12), // Show 12 hours
+                      datasets: [{ data: hourlyDistribution.data.slice(0, 12) }] 
+                    }}
+                    width={screenWidth - 32}
+                    height={220}
+                    chartConfig={chartConfig}
+                    fromZero
+                    bezier
+                    style={styles.chart}
+                  />
+                ) : (
+                  <View style={styles.noDataContainer}>
+                    <MaterialCommunityIcons name="clock" size={48} color={COLORS.gray} />
+                    <Text style={styles.noDataText}>No hourly data available</Text>
+                  </View>
+                )}
+              </View>
+            </Card.Content>
+          </Card>
+
+          {/* Satisfaction Trend Chart */}
+          <Card style={styles.chartCard}>
+            <Card.Content>
+              <View style={styles.chartHeader}>
+                <View>
+                  <Text style={styles.chartTitle}>Satisfaction Trend</Text>
+                  <Text style={styles.chartSubtitle}>Weekly rating progression</Text>
+                </View>
+                <Chip compact style={styles.dataBadge} textStyle={styles.dataBadgeText} icon="trending-up">
+                  {satisfactionTrend.labels.length} Weeks
+                </Chip>
+              </View>
+              <View style={styles.chartContainer}>
+                {loading ? (
+                  <ActivityIndicator size="large" color={COLORS.primary} style={styles.chartLoader} />
+                ) : satisfactionTrend.data.length > 0 ? (
+                  <LineChart
+                    data={{ 
+                      labels: satisfactionTrend.labels, 
+                      datasets: [{ data: satisfactionTrend.data }] 
+                    }}
+                    width={screenWidth - 32}
+                    height={220}
+                    chartConfig={chartConfig}
+                    fromZero
+                    bezier
+                    style={styles.chart}
+                  />
+                ) : (
+                  <View style={styles.noDataContainer}>
+                    <MaterialCommunityIcons name="trending-up" size={48} color={COLORS.gray} />
+                    <Text style={styles.noDataText}>No trend data available</Text>
+                  </View>
+                )}
+              </View>
+            </Card.Content>
+          </Card>
         </View>
 
         {/* Recent Reviews Section */}
@@ -411,7 +598,7 @@ export default function AnalyticsScreen() {
                             style={[styles.vehicleChip, { backgroundColor: getVehicleColor(review.vehicleType) }]}
                             textStyle={styles.chipText}
                           >
-                            {getVehicleIcon(review.vehicleType)} {review.vehicleType}
+                            <Text>{getVehicleIcon(review.vehicleType)} {review.vehicleType}</Text>
                           </Chip>
                           <Chip 
                             compact 
@@ -419,7 +606,7 @@ export default function AnalyticsScreen() {
                             textStyle={styles.locationChipText}
                             icon="map-marker"
                           >
-                            {review.city}
+                            <Text>{review.city}</Text>
                           </Chip>
                         </View>
                         <Text style={styles.reviewTime}>{getRelativeTime(review.timestamp)}</Text>
@@ -472,6 +659,7 @@ export default function AnalyticsScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
     </SafeAreaView>
   );
 }
@@ -537,7 +725,7 @@ const styles = StyleSheet.create({
     flex: undefined,
   },
   primaryCard: {
-    backgroundColor: Colors.light.tint,
+    backgroundColor: COLORS.primary,
   },
   statContent: {
     flexDirection: 'row',
@@ -674,10 +862,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   refreshButton: {
-    borderColor: Colors.light.tint,
+    borderColor: COLORS.primary,
   },
   refreshButtonText: {
-    color: Colors.light.tint,
+    color: COLORS.primary,
     fontSize: 12,
   },
   reviewsList: {
@@ -696,7 +884,7 @@ const styles = StyleSheet.create({
   },
   firstReviewCard: {
     borderLeftWidth: 4,
-    borderLeftColor: Colors.light.tint,
+    borderLeftColor: COLORS.primary,
     backgroundColor: '#f8fafc',
   },
   reviewHeader: {
@@ -818,4 +1006,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  
+  
+  // Enhanced Charts Styles
+  enhancedChartsSection: {
+    marginBottom: 24,
+  },
+  noDataContainer: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noDataText: {
+    color: COLORS.gray,
+    fontSize: 14,
+    marginTop: 8,
+  },
+  
 });
